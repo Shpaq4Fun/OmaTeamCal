@@ -1,0 +1,20 @@
+{
+  "apiKey": "YOUR_GOOGLE_CALENDAR_API_KEY",
+  "refreshIntervalMinutes": 5,
+  "users": [
+    {
+      "id": "user-0",
+      "name": "Example Member",
+      "calendarId": ["example.calendar@group.calendar.google.com"],
+      "invitationCalId": "example@gmail.com",
+      "public": true
+    },
+    {
+      "id": "user-1",
+      "name": "Another Member",
+      "calendarId": ["another.member@example.com"],
+      "invitationCalId": "another.member@example.com",
+      "public": false
+    }
+  ]
+}

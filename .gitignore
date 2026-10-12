@@ -1,0 +1,11 @@
+# Secrets — real team config with Google API key (use team.example.json as template)
+team.json
+
+# Local scratch / debug harness (see plan.md Phase 4 — delete after plugin lands)
+_Bisect.qml
+
+# Backup / editor / OS cruft
+*.bak
+.DS_Store
+nohup.out
+*.qslog
