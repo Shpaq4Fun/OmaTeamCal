@@ -64,37 +64,38 @@
 - Regression harness: `_Bisect.qml` (headless driver, prints PASS/FAIL) —
   run with `quickshell -p ./_Bisect.qml`; delete when no longer needed
 
-### 2.3 `Panel.qml` ✅ FIXED
-- Pre-existing stray brace in `teamFile.onLoaded` made the file **fail to load
-  entirely** — fixed
-- Uses `PopupWindow` as root (Omarchy-compatible), contains `CalendarGrid` +
-  member sidebar, auto-closes on outside click (`grabFocus: true`)
-- **Still missing for parity with Preview (see Phase 3.4):** theme `FileView`
-  watchers (theme props are hardcoded defaults today) and the auto-refresh
-  `Timer`
+### 2.3 `Panel.qml` ✅ DONE — rewritten as modern single-entry Omarchy plugin
+- Root is now shell `Panel` (from `qs.Ui`): `moduleName`/`ipcTarget` set,
+  `manageIpc` default handles open/close/toggle IPC
+- Bar button (`WidgetButton`, 📅) + popup (`KeyboardPanel` anchored to the
+  button; outside-click dismissal, screen-cap fitting via `fittedContentWidth`)
+- `implicitWidth`/`implicitHeight` bound to the button (bar slot sizes from
+  these — Bar.qml:1814)
+- Theme: live from the `Color` singleton (`qs.Commons`) — no FileView watchers
+  needed, theme switches apply automatically (3.4 theme half: moot)
+- Auto-refresh `Timer` added (interval from team.json, default 5 min)
+- `team.json` loaded via `Qt.resolvedUrl` (works installed AND standalone)
 
-### 2.4 `BarWidget.qml` ⚠️ NOT WIRED
-- Toggle via `Loader` + `PopupWindow` Component works, but the Component
-  creates an **empty PopupWindow** — `Panel.qml` is never loaded, no shell /
-  bar / theme properties are passed, and no positioning is done
-- This is the main blocker for the plugin being usable from the Omarchy bar
+### 2.4 `BarWidget.qml` ✅ REMOVED
+- Obsolete: the modern Omarchy pattern is a single `Panel.qml` entry; the
+  manifest now points `entryPoints.barWidget` at `Panel.qml`
 
 ---
 
 ## Phase 3: Next Implementation (prioritized)
 
-### 3.1 Wire `BarWidget.qml` → `Panel.qml` — HIGHEST PRIORITY
-- `panelComponent` should instantiate `Panel.qml` (via `Loader.source` or
-  inline the panel content), passing `shell`, `bar`, and theme properties
-- Position the `PopupWindow` relative to the bar widget (Omarchy popup
-  conventions); verify outside-click close (`grabFocus`) still works
-- Smoke-test the real plugin path end to end
+### 3.1 Wire `BarWidget.qml` → `Panel.qml` ✅ DONE (2026-10-13)
+- Implemented as the modern single-entry pattern (see 2.3) instead of
+  Loader wiring — `Panel.qml` IS the barWidget entry
+- Compile-verified standalone (harness with `qs.*` symlinked) and via
+  `_Bisect.qml` — **not yet smoke-tested inside the live Omarchy bar** (Phase 4)
 
-### 3.2 Dynamic week/day headers in `CalendarGrid.qml`
-- Day header is **hardcoded** (`"PON. 20" … "NIEDZ. 26"`) — wrong for any
-  week other than the one it was screenshotted in
-- Derive day names + dates from the DataController week start
-  (`DataController.getWeekStart()`), re-rendered on week navigation
+### 3.2 Dynamic week/day headers in `CalendarGrid.qml` ✅ DONE (2026-10-13)
+- `weekStart` property added; `days` derived (`PON. 12` …) from it
+- `weekStartDate(offset)` + `weekStart` binding in Preview/Panel; passed to
+  grid; re-renders on ◀/▶ week navigation
+- Verified: `weekStart=Mon Oct 12 2026`, `days=[PON. 12 … NIEDZ. 18]`,
+  labels `OCT 12 - OCT 18` / next `OCT 19 - OCT 25`
 
 ### 3.3 Wire remaining `team.json` config
 - `timeRange {startHour, endHour}` → pass through to `CalendarGrid`
@@ -103,10 +104,12 @@
   and `CalendarService.getWeekRange()` (currently hardcoded Monday)
 - Defaults already exist in `DataController._config`
 
-### 3.4 `Panel.qml` parity with `Preview.qml`
-- Add theme `FileView` watchers (`colors.toml`, `theme.name`) so the panel is
-  theme-aware and reacts to live theme switches
-- Add the auto-refresh `Timer` (only Preview has it today)
+### 3.4 `Panel.qml` parity with `Preview.qml` ✅ DONE (2026-10-13)
+- Theme handled via the `Color` singleton (live, better than FileView
+  watchers); auto-refresh `Timer` added
+- **BLOCKER for live events:** `team.json` `apiKey` is currently the
+  placeholder `GCP_API...` — Google returns HTTP 400 "API key not valid".
+  Restore the real key (user action) before Phase 4 live testing
 
 ### 3.5 Use the existing HTTP cache
 - `Network.fetchJsonCached` is implemented but unused; `CalendarService` uses
@@ -124,8 +127,9 @@
 
 ## Phase 4: Install & Verify
 
-- Install as Omarchy plugin → test bar widget → panel → toggle → week nav →
-  live theme switch
+- **Prereq:** restore real Google API key in `team.json`
+- Install as Omarchy plugin (symlink `~/.config/omarchy/plugins/shpaq.omateamcal`
+  → this repo) → test bar widget → panel → toggle → week nav → live theme switch
 - Keep `_Bisect.qml` as a regression check until this lands, then remove it
 
 ---
@@ -134,13 +138,12 @@
 
 ```
 /home/shpaq/GoogleDrive/Pomysly/OmaTeamCal/
-├── manifest.json
-├── team.json              # apiKey, refreshIntervalMinutes, (+ timeRange, weekStart)
-├── BarWidget.qml          # must load Panel.qml (3.1)
-├── Panel.qml              # + theme watchers + refresh timer (3.4)
+├── manifest.json           # entryPoints.barWidget → Panel.qml
+├── team.json              # apiKey (PLACEHOLDER right now!), refreshIntervalMinutes (+ timeRange, weekStart TODO)
+├── Panel.qml              # single-entry Omarchy plugin: bar button + KeyboardPanel ✅
 ├── Preview.qml            # standalone dev harness
 ├── components/
-│   ├── CalendarGrid.qml   # + dynamic day headers, configurable hours (3.2, 3.3)
+│   ├── CalendarGrid.qml   # ✅ dynamic day headers; + configurable hours (3.3)
 │   ├── MemberFilter.qml   # aligned to selectedUserIds contract (unused so far)
 │   └── PatternRect.qml
 └── scripts/

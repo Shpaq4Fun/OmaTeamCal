@@ -7,13 +7,24 @@ Item {
 
   property var activeStyleMap: ({})
   property var events: []
+  // Monday of the displayed week; the day header derives from it
+  property var weekStart: new Date()
   property color themeForeground: "#bebebe"
   property color themeMuted: "#555555"
   property color themeAccent: "#e68e0d"
   property color themeBg: "#121212"
 
-  // Days of the week header
-  readonly property var days: ["PON. 20", "WT. 21", "ŚR. 22", "CZW. 23", "PT. 24", "SOB. 25", "NIEDZ. 26"]
+  // Days of the week header, derived from weekStart (0=Mon .. 6=Sun)
+  readonly property var days: {
+    var names = ["PON.", "WT.", "ŚR.", "CZW.", "PT.", "SOB.", "NIEDZ."]
+    var out = []
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(root.weekStart)
+      d.setDate(d.getDate() + i)
+      out.push(names[i] + " " + d.getDate())
+    }
+    return out
+  }
   readonly property int startHour: 7
   readonly property int endHour: 18
   readonly property int totalHours: endHour - startHour

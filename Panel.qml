@@ -3,52 +3,66 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
+import qs.Commons
+import qs.Ui
 
 import "components"
 import "scripts/DataController.js" as DataController
-PopupWindow {
+
+// Omarchy bar widget + popup panel in one entry point (manifest points
+// entryPoints.barWidget here). The shell injects bar/moduleName/settings;
+// theme colors come live from the Color singleton, so theme switches apply
+// without any file watching of our own. The popup is a KeyboardPanel anchored
+// to the bar button — outside-click dismissal and focus handling included.
+Panel {
     id: root
 
-    // Provided by Omarchy shell when opened from BarWidget
-    property var shell: null
-    property var bar: null
+    moduleName: "shpaq.omateamcal"
+    ipcTarget: "shpaq.omateamcal"
 
-    // Theme properties (injected by shell)
-    property color foreground: "#bebebe"
-    property color background: "#121212"
-    property color accent: "#e68e0d"
-    property color muted: "#555555"
+    // Theme (live from the active Omarchy theme via the Color singleton)
+    readonly property color foreground: Color.foreground
+    readonly property color background: Color.background
+    readonly property color accent: Color.accent
+    readonly property color muted: Color.muted
+    readonly property bool barVertical: bar ? bar.vertical : false
 
-    implicitWidth: 960
-    implicitHeight: 640
-    grabFocus: true // Close when clicking outside
-
-    // Internal state
     // Team roster: stable ListView model, never reassigned on toggle
     property var teamData: []
     // Selected member ids — single source of truth for the checkbox state
     property var selectedUserIds: []
     property var activeStyleMap: ({})
+
+    // Events from DataController
     property var events: []
+
+    // Loading / error state
     property bool loading: false
     property string errorMessage: ""
     property int weekOffset: 0
 
-    // Week label helper
-    function weekLabel(offset) {
+    // Monday 00:00 of the displayed week
+    function weekStartDate(offset) {
         var d = new Date();
         var day = d.getDay();
         var diffToMon = (day === 0 ? -6 : 1) - day;
         var monday = new Date(d);
         monday.setDate(d.getDate() + diffToMon + offset * 7);
         monday.setHours(0, 0, 0, 0);
+        return monday;
+    }
+    readonly property var weekStart: weekStartDate(weekOffset)
+
+    function weekLabel(offset) {
+        var monday = weekStartDate(offset);
         var sunday = new Date(monday);
         sunday.setDate(monday.getDate() + 6);
         var monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
         return monthNames[monday.getMonth()] + " " + monday.getDate() + " - " + monthNames[sunday.getMonth()] + " " + sunday.getDate();
     }
 
-    // Color/style engine (inlined)
+    // ── Color / style engine ──
+
     function parseHex(h) {
         var s = String(h || "#000000").replace("#", "");
         if (s.length === 3) s = s[0]+s[0]+s[1]+s[1]+s[2]+s[2];
@@ -98,9 +112,6 @@ PopupWindow {
 
     // Toggle a member. Runs at root scope; the ListView model is untouched,
     // so the clicked delegate survives and the whole handler completes.
-    // (The old flow reassigned teamData here, which reset the ListView,
-    // destroyed the delegate mid-handler, and left a ReferenceError before
-    // the style map / data refetch could run — events never disappeared.)
     function toggleUser(userId) {
         var next = [];
         var wasSelected = false;
@@ -117,10 +128,18 @@ PopupWindow {
         DataController.setActiveUsers(selected);
     }
 
-    // Load team.json from plugin directory
+    // Bar slot sizes itself from these (Bar.qml:1814) — keep them bound to
+    // the button's implicit size so the bar item never collapses to 0×0.
+    implicitWidth: button.implicitWidth
+    implicitHeight: button.implicitHeight
+
+    // Load team.json from the plugin directory (works both installed under
+    // ~/.config/omarchy/plugins/ and when run standalone)
     FileView {
         id: teamFile
-        path: Quickshell.shellDir + "/team.json"
+        path: Qt.resolvedUrl("team.json").toString()
+        watchChanges: true
+        printErrors: false
         onLoaded: {
             try {
                 var parsed = JSON.parse(text());
@@ -134,7 +153,10 @@ PopupWindow {
                 root.selectedUserIds = sel;
                 root.activeStyleMap = root.computeStyleMap(root.selectedUsers(), root.accent, root.background);
                 if (parsed.apiKey) DataController.setConfig({ apiKey: parsed.apiKey });
-                if (parsed.refreshIntervalMinutes) DataController.setConfig({ refreshIntervalMinutes: parsed.refreshIntervalMinutes });
+                if (parsed.refreshIntervalMinutes) {
+                    DataController.setConfig({ refreshIntervalMinutes: parsed.refreshIntervalMinutes });
+                    refreshTimer.interval = parsed.refreshIntervalMinutes * 60 * 1000;
+                }
                 DataController.setActiveUsers(root.selectedUsers());
             } catch (err) { console.error("Failed to parse team.json:", err); }
         }
@@ -149,15 +171,44 @@ PopupWindow {
         teamFile.reload();
     }
 
-    // Panel content
-    Rectangle {
-        anchors.fill: parent
-        color: root.background
-        radius: 8
+    // Auto-refresh timer (from team.json config)
+    Timer {
+        id: refreshTimer
+        interval: 5 * 60 * 1000 // default 5 min, updated from team.json
+        running: true
+        repeat: true
+        onTriggered: {
+            if (!root.loading) {
+                DataController.refresh();
+            }
+        }
+    }
+
+    // Bar button
+    WidgetButton {
+        id: button
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: root.barVertical ? parent.width : implicitWidth
+        bar: root.bar
+        text: "📅"
+        tooltipText: "Team calendar"
+        onPressed: function(buttonCode) { root.toggle() }
+    }
+
+    // Popup panel anchored to the bar button
+    KeyboardPanel {
+        id: panel
+        anchorItem: button
+        owner: root
+        bar: root.bar
+        open: root.opened
+        contentWidth: panel.fittedContentWidth(Style.space(960))
+        contentHeight: panel.fittedContentHeight(Style.space(640))
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 12
             spacing: 10
 
             // Header with week nav
@@ -174,7 +225,7 @@ PopupWindow {
 
                 Text {
                     Layout.fillWidth: true
-                    text: weekLabel(root.weekOffset)
+                    text: root.weekLabel(root.weekOffset)
                     color: root.foreground
                     font.pixelSize: 14
                     font.bold: true
@@ -334,6 +385,7 @@ PopupWindow {
                         anchors.margins: 8
                         activeStyleMap: root.activeStyleMap
                         events: root.events
+                        weekStart: root.weekStart
                         themeForeground: root.foreground
                         themeMuted: root.muted
                         themeAccent: root.accent

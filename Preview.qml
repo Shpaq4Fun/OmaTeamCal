@@ -216,14 +216,21 @@ FloatingWindow {
         root.activeStyleMap = root.computeStyleMap(root.selectedUsers(), root.themeAccent, root.themeBg);
     }
 
-    // Week label helper
-    function weekLabel(offset) {
+    // Monday 00:00 of the displayed week
+    function weekStartDate(offset) {
         var d = new Date();
         var day = d.getDay();
         var diffToMon = (day === 0 ? -6 : 1) - day;
         var monday = new Date(d);
         monday.setDate(d.getDate() + diffToMon + offset * 7);
         monday.setHours(0, 0, 0, 0);
+        return monday;
+    }
+    readonly property var weekStart: weekStartDate(weekOffset)
+
+    // Week label helper
+    function weekLabel(offset) {
+        var monday = weekStartDate(offset);
         var sunday = new Date(monday);
         sunday.setDate(monday.getDate() + 6);
         var monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
@@ -448,6 +455,7 @@ FloatingWindow {
                 anchors.margins: 10
                 activeStyleMap: root.activeStyleMap
                 events: root.events
+                weekStart: root.weekStart
                 themeForeground: root.themeForeground
                 themeMuted: root.themeMuted
                 themeAccent: root.themeAccent
