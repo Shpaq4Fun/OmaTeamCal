@@ -1,6 +1,8 @@
 {
   "apiKey": "YOUR_GOOGLE_CALENDAR_API_KEY",
   "refreshIntervalMinutes": 5,
+  "weekStart": 0,
+  "timeRange": { "startHour": 7, "endHour": 18 },
   "users": [
     {
       "id": "user-0",

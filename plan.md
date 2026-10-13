@@ -82,7 +82,7 @@
 
 ---
 
-## Phase 3: Next Implementation (prioritized)
+## Phase 3: Next Implementation (prioritized) ✅ ALL DONE (2026-10-13)
 
 ### 3.1 Wire `BarWidget.qml` → `Panel.qml` ✅ DONE (2026-10-13)
 - Implemented as the modern single-entry pattern (see 2.3) instead of
@@ -97,31 +97,39 @@
 - Verified: `weekStart=Mon Oct 12 2026`, `days=[PON. 12 … NIEDZ. 18]`,
   labels `OCT 12 - OCT 18` / next `OCT 19 - OCT 25`
 
-### 3.3 Wire remaining `team.json` config
-- `timeRange {startHour, endHour}` → pass through to `CalendarGrid`
-  (currently hardcoded readonly 7–18)
-- `weekStart` (0=Mon … 6=Sun) → honor in `DataController.getCurrentWeekStart()`
-  and `CalendarService.getWeekRange()` (currently hardcoded Monday)
-- Defaults already exist in `DataController._config`
+### 3.3 Wire remaining `team.json` config ✅ DONE (2026-10-13)
+- `timeRange {startHour, endHour}` → clamped in `DataController.setConfig`,
+  passed to `CalendarGrid` (was hardcoded 7–18)
+- `weekStart` (0=Mon … 6=Sun) → honored in `DataController.getCurrentWeekStart()`,
+  `CalendarService.getWeekRange()` (now trusts the configured start),
+  UI `weekStartDate()`/`weekLabel()`, and the day header rotation in
+  `CalendarGrid.days`
+- Single `setConfig` call on team.json load; UI reads back the clamped values
+  via `getConfig()` so both sides always agree
+- Verified live: `weekStart: 1` + `timeRange 6–20` → `weekStart=Tue Oct 13`,
+  days `[WT. 13 … PON. 19]`, hours 6–20, toggle PASS; restored defaults verified
 
 ### 3.4 `Panel.qml` parity with `Preview.qml` ✅ DONE (2026-10-13)
 - Theme handled via the `Color` singleton (live, better than FileView
   watchers); auto-refresh `Timer` added
-- **BLOCKER for live events:** `team.json` `apiKey` is currently the
-  placeholder `GCP_API...` — Google returns HTTP 400 "API key not valid".
-  Restore the real key (user action) before Phase 4 live testing
+- ~~**BLOCKER for live events:** `team.json` `apiKey` placeholder~~ — resolved,
+  user restored the real key; live fetch verified (41 events, PASS)
 
-### 3.5 Use the existing HTTP cache
-- `Network.fetchJsonCached` is implemented but unused; `CalendarService` uses
-  plain `fetchJson`. Switch `events.list` GETs to `fetchJsonCached` (30 s TTL)
-  so rapid member toggles re-render instantly from cache and hammer the
-  Google API less
+### 3.5 Use the existing HTTP cache ✅ DONE (2026-10-13)
+- `CalendarService.fetchEventsForCalendar` → `Network.fetchJsonCached`
+  (30 s TTL): rapid member toggles re-render instantly from cache
+- Manual ⟳ Refresh calls `Network.clearCache()` first so it really refetches
+- Auto-refresh interval (≥ 5 min) always exceeds the TTL → fresh data
 
-### 3.6 Error handling & UX polish
-- Retry with exponential backoff on network error
-- Offline detection (cached data + stale badge)
-- Empty state: "No events this week" / "No active members"
-- Tooltips on events with full description
+### 3.6 Error handling & UX polish ✅ DONE (2026-10-13)
+- **Retry:** exponential backoff (2s/4s/8s, max 3 attempts) for transient
+  errors (network/timeout/5xx/429); UI drives the delay via a retry Timer —
+  `.pragma library` can't create timers itself. Banner shows "Retrying…"
+- **Offline badge:** when a fetch fails but events exist, the red banner is
+  replaced by a subtle amber "⚠ Showing saved data · updated HH:MM · retrying…"
+- **Empty states:** "No active members" (with hint) / "No events this week"
+- **Tooltips:** hover any event → details card (title, time, member, location,
+  description ≤ 4 lines), clamped inside the grid, immune to scroll clipping
 
 ---
 
@@ -139,17 +147,17 @@
 ```
 /home/shpaq/GoogleDrive/Pomysly/OmaTeamCal/
 ├── manifest.json           # entryPoints.barWidget → Panel.qml
-├── team.json              # apiKey (PLACEHOLDER right now!), refreshIntervalMinutes (+ timeRange, weekStart TODO)
+├── team.json              # apiKey, refreshIntervalMinutes, weekStart, timeRange ✅
 ├── Panel.qml              # single-entry Omarchy plugin: bar button + KeyboardPanel ✅
 ├── Preview.qml            # standalone dev harness
 ├── components/
-│   ├── CalendarGrid.qml   # ✅ dynamic day headers; + configurable hours (3.3)
+│   ├── CalendarGrid.qml   # ✅ dynamic day headers, configurable hours, tooltips
 │   ├── MemberFilter.qml   # aligned to selectedUserIds contract (unused so far)
 │   └── PatternRect.qml
 └── scripts/
     ├── ColorEngine.js
     ├── StyleAssigner.js
-    ├── Network.js         # fetchJsonCached exists — wire it up (3.5)
+    ├── Network.js         # ✅ fetchJsonCached wired into CalendarService
     ├── CalendarService.js
     ├── EventNormalizer.js
     └── DataController.js
@@ -167,4 +175,5 @@
   model stays stable.
 - **Timezones** — Google Calendar returns RFC3339 with timezone; normalize to local for display
 - **Rate limits** — maxResults=100 per calendar; use the HTTP cache (3.5)
-- **Omarchy integration** — `themeBg`, `themeAccent`, `themeForeground`, `themeMuted` from `colors.toml`
+- **Omarchy integration** — theme comes live from the `Color` singleton
+  (`qs.Commons`); `Preview.qml` falls back to FileView watchers on `colors.toml`

@@ -12,8 +12,8 @@ active Omarchy theme, so it always matches the rest of your bar.
 
 - **Bar widget + popup panel** — 📅 button in the bar, wide weekly grid in a
   popup anchored to the button (dismiss with outside click)
-- **Multi-member view** — every team member's events in one Mon–Sun grid,
-  hours 07:00–18:00
+- **Multi-member view** — every team member's events in one weekly grid
+  (default Mon–Sun, 07:00–18:00)
 - **Per-member styling** — each member gets a unique color tint **and** pattern
   (solid / diagonal stripes / dots / crosshatch), derived from your theme's
   accent color. Sidebar checkboxes share the same swatch, so members are easy to
@@ -22,12 +22,21 @@ active Omarchy theme, so it always matches the rest of your bar.
   updates instantly without refetching the whole week
 - **Week navigation** — ◀ / ▶ moves one week at a time; day headers always show
   the real dates of the displayed week
+- **Configurable week** — set the first day of the week (`0`=Mon … `6`=Sun) and
+  the visible hour range (default 07:00–18:00) in `team.json`
+- **Hover tooltips** — hover an event for full details: title, time, member,
+  location, and description
+- **Instant toggling** — API responses are cached for 30 s, so rapid member
+  clicks re-render immediately instead of re-hitting Google every time
 - **Auto-refresh** — polls Google Calendar on an interval you configure
   (default: every 5 minutes), plus a manual ⟳ Refresh button
+- **Error handling** — transient failures (offline, timeout, 5xx) are retried
+  automatically with backoff; when a fetch fails but data is already on screen,
+  a subtle "⚠ Showing saved data · updated HH:MM" badge replaces the error
+- **Empty states** — "No active members" / "No events this week" instead of a
+  blank grid
 - **Theme-adaptive** — follows your Omarchy theme live; switch themes and the
   panel restyles itself, no restart needed
-- **Error banner** — API and network problems surface in the panel instead of
-  failing silently
 
 ## Requirements
 
@@ -91,8 +100,13 @@ Only expose events you're comfortable making readable by anyone with the key.
 
 ```jsonc
 {
-  "apiKey": "AIzaSy…",            // your Google Calendar API key
+  "apiKey": "AIza…",              // your Google Calendar API key
   "refreshIntervalMinutes": 5,     // auto-refresh interval (optional, default 5)
+  "weekStart": 0,                  // first day of week: 0=Mon … 6=Sun (default 0)
+  "timeRange": {                   // visible hours in the grid (default 7–18)
+    "startHour": 7,
+    "endHour": 18
+  },
   "users": [
     {
       "id": "user-0",              // stable, unique id (any string)
@@ -112,6 +126,8 @@ Only expose events you're comfortable making readable by anyone with the key.
 |---|---|---|---|
 | `apiKey` | top level | yes | Google Calendar API key |
 | `refreshIntervalMinutes` | top level | no | Auto-refresh period in minutes (default `5`) |
+| `weekStart` | top level | no | First day of the week: `0`=Mon … `6`=Sun (default `0`) |
+| `timeRange` | top level | no | Visible hours: `{"startHour": 7, "endHour": 18}` (default 7–18; clamped so at least one hour shows) |
 | `users` | top level | yes | List of team members shown in the sidebar |
 | `id` | user | yes | Unique, stable id — used for selection and styling. Never reuse an id for a different person (selection state keys off it) |
 | `name` | user | yes | Label shown in the sidebar |
@@ -132,6 +148,7 @@ Copy [`team.example.json`](./team.example.json) as your starting point.
 | Show/hide a member | Click the member in the sidebar |
 | Previous/next week | ◀ / ▶ in the panel header |
 | Refresh now | ⟳ Refresh button |
+| Event details | Hover an event for the tooltip |
 | Close panel | Click outside the panel |
 | From the terminal | `omarchy-shell shpaq.omateamcal toggle` (also `open` / `close`) |
 
@@ -188,11 +205,8 @@ scripts/
 
 ## Roadmap
 
-- Configurable time range and week start day (`timeRange`, `weekStart` in
-  `team.json`)
-- Response caching for instant member toggling
-- Offline detection, retry/backoff, empty states, event tooltips
 - Keyboard dismissal (`Escape`) for the popup
+- RSVP/invitation support (the reserved `invitationCalId` field)
 
 ## Notes
 

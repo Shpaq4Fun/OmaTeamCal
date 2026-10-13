@@ -7,27 +7,36 @@ Item {
 
   property var activeStyleMap: ({})
   property var events: []
-  // Monday of the displayed week; the day header derives from it
+  // First day of the displayed week; the day header derives from it
   property var weekStart: new Date()
+  // Config (from team.json): 0=Mon .. 6=Sun, and visible hour range
+  property int weekStartDay: 0
+  property int startHour: 7
+  property int endHour: 18
   property color themeForeground: "#bebebe"
   property color themeMuted: "#555555"
   property color themeAccent: "#e68e0d"
   property color themeBg: "#121212"
 
-  // Days of the week header, derived from weekStart (0=Mon .. 6=Sun)
+  // Hover tooltip state. Keyed by the event's unique id (string): object
+  // references from `modelData` are NOT stable across re-evaluations, so an
+  // identity comparison would never match and the tooltip would never hide.
+  property string hoveredId: ""
+  property var hoveredEvent: null
+  property point tipPos: Qt.point(0, 0)
+
+  // Days of the week header, derived from weekStart + weekStartDay
   readonly property var days: {
     var names = ["PON.", "WT.", "ŚR.", "CZW.", "PT.", "SOB.", "NIEDZ."]
     var out = []
     for (var i = 0; i < 7; i++) {
       var d = new Date(root.weekStart)
       d.setDate(d.getDate() + i)
-      out.push(names[i] + " " + d.getDate())
+      out.push(names[(root.weekStartDay + i) % 7] + " " + d.getDate())
     }
     return out
   }
-  readonly property int startHour: 7
-  readonly property int endHour: 18
-  readonly property int totalHours: endHour - startHour
+  readonly property int totalHours: Math.max(1, endHour - startHour)
 
   // Adaptive: each hour row fills 1/N of the Flickable height so grid always fits
   readonly property real pxPerHour: gridFlickable.height > 0
@@ -206,9 +215,109 @@ Item {
                 }
               }
             }
+
+            // Hover → tooltip with full details (pure hover, no clicks needed)
+            MouseArea {
+              id: tipArea
+              anchors.fill: parent
+              hoverEnabled: true
+              acceptedButtons: Qt.NoButton
+              onEntered: {
+                root.hoveredId = String(eventDelegate.eventItem.id)
+                root.hoveredEvent = eventDelegate.eventItem
+              }
+              onExited: {
+                if (root.hoveredId === String(eventDelegate.eventItem.id)) {
+                  root.hoveredId = ""
+                  root.hoveredEvent = null
+                }
+              }
+              onMouseXChanged: root.moveTip(tipArea)
+              onMouseYChanged: root.moveTip(tipArea)
+            }
+
+            Component.onDestruction: {
+              if (root.hoveredId === String(eventDelegate.eventItem.id)) {
+                root.hoveredId = ""
+                root.hoveredEvent = null
+              }
+            }
           }
         }
       }
     }
+  }
+
+  // Tooltip: direct child of root (outside the ColumnLayout and Flickable)
+  // so the layout never positions it and it never scrolls or clips away.
+  Rectangle {
+    id: tip
+    z: 100
+    visible: root.hoveredId !== ""
+    width: 240
+    height: tipCol.implicitHeight + 16
+    radius: 6
+    color: Qt.darker(root.themeBg, 1.5)
+    border.color: Qt.rgba(root.themeAccent.r, root.themeAccent.g, root.themeAccent.b, 0.5)
+    border.width: 1
+
+    x: Math.max(4, Math.min(root.tipPos.x + 14, root.width - width - 4))
+    y: root.tipPos.y + 14 + height > root.height
+      ? Math.max(4, root.tipPos.y - height - 10)
+      : root.tipPos.y + 14
+
+    Column {
+      id: tipCol
+      anchors.fill: parent
+      anchors.margins: 8
+      spacing: 3
+
+      Text {
+        width: parent.width
+        text: root.hoveredEvent ? (root.hoveredEvent.title || "") : ""
+        font.pixelSize: 11
+        font.bold: true
+        color: root.themeForeground
+        wrapMode: Text.WordWrap
+      }
+      Text {
+        width: parent.width
+        text: root.hoveredEvent ? (root.hoveredEvent.timeLabel || "") : ""
+        font.pixelSize: 10
+        color: root.themeAccent
+      }
+      Text {
+        width: parent.width
+        text: root.hoveredEvent ? (root.hoveredEvent.userName || "") : ""
+        font.pixelSize: 10
+        color: root.themeForeground
+        elide: Text.ElideRight
+      }
+      Text {
+        width: parent.width
+        visible: root.hoveredEvent && root.hoveredEvent.location !== ""
+        text: root.hoveredEvent ? ("📍 " + root.hoveredEvent.location) : ""
+        font.pixelSize: 10
+        color: root.themeForeground
+        wrapMode: Text.WordWrap
+      }
+      Text {
+        width: parent.width
+        visible: root.hoveredEvent && root.hoveredEvent.description !== ""
+        text: root.hoveredEvent ? (root.hoveredEvent.description || "") : ""
+        font.pixelSize: 10
+        color: root.themeForeground
+        opacity: 0.9
+        wrapMode: Text.WordWrap
+        maximumLineCount: 4
+        elide: Text.ElideRight
+      }
+    }
+  }
+
+  // Called from the delegate's hover areas to follow the cursor
+  function moveTip(area) {
+    if (hoveredId === "") return
+    tipPos = area.mapToItem(root, area.mouseX, area.mouseY)
   }
 }

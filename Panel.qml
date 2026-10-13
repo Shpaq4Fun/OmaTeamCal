@@ -39,17 +39,23 @@ Panel {
     // Loading / error state
     property bool loading: false
     property string errorMessage: ""
+    property bool retryPending: false
     property int weekOffset: 0
 
-    // Monday 00:00 of the displayed week
+    // Config from team.json (kept in sync with DataController's clamped values)
+    property int weekStartDay: 0
+    property int startHour: 7
+    property int endHour: 18
+
+    // Week start 00:00 of the displayed week (honors configured weekStartDay)
     function weekStartDate(offset) {
         var d = new Date();
-        var day = d.getDay();
-        var diffToMon = (day === 0 ? -6 : 1) - day;
-        var monday = new Date(d);
-        monday.setDate(d.getDate() + diffToMon + offset * 7);
-        monday.setHours(0, 0, 0, 0);
-        return monday;
+        var curDay = (d.getDay() + 6) % 7; // 0=Mon .. 6=Sun
+        var diff = (curDay - root.weekStartDay + 7) % 7; // days since week start
+        var start = new Date(d);
+        start.setDate(d.getDate() - diff + offset * 7);
+        start.setHours(0, 0, 0, 0);
+        return start;
     }
     readonly property var weekStart: weekStartDate(weekOffset)
 
@@ -152,11 +158,21 @@ Panel {
                 }
                 root.selectedUserIds = sel;
                 root.activeStyleMap = root.computeStyleMap(root.selectedUsers(), root.accent, root.background);
-                if (parsed.apiKey) DataController.setConfig({ apiKey: parsed.apiKey });
+                // Pass config to DataController (single call), then read back
+                // the clamped values so UI and controller agree
+                var cfg = {};
+                if (parsed.apiKey) cfg.apiKey = parsed.apiKey;
                 if (parsed.refreshIntervalMinutes) {
-                    DataController.setConfig({ refreshIntervalMinutes: parsed.refreshIntervalMinutes });
+                    cfg.refreshIntervalMinutes = parsed.refreshIntervalMinutes;
                     refreshTimer.interval = parsed.refreshIntervalMinutes * 60 * 1000;
                 }
+                if (parsed.weekStart !== undefined) cfg.weekStartDay = parsed.weekStart;
+                if (parsed.timeRange) cfg.timeRange = parsed.timeRange;
+                DataController.setConfig(cfg);
+                var cc = DataController.getConfig();
+                root.weekStartDay = cc.weekStartDay;
+                root.startHour = cc.timeRange.startHour;
+                root.endHour = cc.timeRange.endHour;
                 DataController.setActiveUsers(root.selectedUsers());
             } catch (err) { console.error("Failed to parse team.json:", err); }
         }
@@ -167,6 +183,10 @@ Panel {
         DataController.onEventsChanged(function(newEvents) { root.events = newEvents; });
         DataController.onLoadingChanged(function(isLoading) { root.loading = isLoading; });
         DataController.onErrorChanged(function(err) { root.errorMessage = err || ""; });
+        DataController.onRetryStateChanged(function(pending, delay) {
+            if (pending) retryTimer.interval = Math.max(500, delay);
+            root.retryPending = pending;
+        });
 
         teamFile.reload();
     }
@@ -182,6 +202,14 @@ Panel {
                 DataController.refresh();
             }
         }
+    }
+
+    // Backoff retry timer — interval set by DataController's retry callback
+    Timer {
+        id: retryTimer
+        running: root.retryPending
+        repeat: false
+        onTriggered: DataController.retryNow()
     }
 
     // Bar button
@@ -248,10 +276,10 @@ Panel {
                 enabled: !root.loading
             }
 
-            // Error banner
+            // Error banner — only when there is no data to fall back on
             Rectangle {
                 Layout.fillWidth: true
-                visible: root.errorMessage !== ""
+                visible: root.errorMessage !== "" && root.events.length === 0
                 height: 36
                 color: Qt.rgba(0.9, 0.3, 0.3, 0.15)
                 border.color: Qt.rgba(0.9, 0.3, 0.3, 0.5)
@@ -261,8 +289,33 @@ Panel {
                 Text {
                     anchors.fill: parent
                     anchors.margins: 8
-                    text: root.errorMessage
+                    text: root.errorMessage + (root.retryPending ? "\nRetrying…" : "")
                     color: "#e06c75"
+                    font.pixelSize: 10
+                    wrapMode: Text.WordWrap
+                }
+            }
+
+            // Offline/stale badge — subtle: we still have data to show
+            Rectangle {
+                Layout.fillWidth: true
+                visible: root.errorMessage !== "" && root.events.length > 0
+                height: offlineText.implicitHeight + 10
+                color: Qt.rgba(0.9, 0.6, 0.2, 0.12)
+                border.color: Qt.rgba(0.9, 0.6, 0.2, 0.45)
+                border.width: 1
+                radius: 4
+
+                Text {
+                    id: offlineText
+                    anchors.fill: parent
+                    anchors.margins: 5
+                    text: "⚠ Showing saved data"
+                        + (DataController.getLastFetchTime() > 0
+                            ? " · updated " + Qt.formatTime(new Date(DataController.getLastFetchTime()), "HH:mm")
+                            : "")
+                        + (root.retryPending ? " · retrying…" : "")
+                    color: "#e5a046"
                     font.pixelSize: 10
                     wrapMode: Text.WordWrap
                 }
@@ -386,10 +439,45 @@ Panel {
                         activeStyleMap: root.activeStyleMap
                         events: root.events
                         weekStart: root.weekStart
+                        weekStartDay: root.weekStartDay
+                        startHour: root.startHour
+                        endHour: root.endHour
                         themeForeground: root.foreground
                         themeMuted: root.muted
                         themeAccent: root.accent
                         themeBg: root.background
+                    }
+
+                    // Empty state — no fetch in flight and nothing to show
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: !root.loading && root.errorMessage === ""
+                            && root.events.length === 0 && root.teamData.length > 0
+                        color: Qt.rgba(root.background.r, root.background.g, root.background.b, 0.9)
+                        radius: 6
+
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 8
+
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: root.selectedUserIds.length === 0
+                                    ? "No active members"
+                                    : "No events this week"
+                                color: root.foreground
+                                font.pixelSize: 14
+                                font.bold: true
+                            }
+
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                visible: root.selectedUserIds.length === 0
+                                text: "Tick members in the sidebar to show their events"
+                                color: root.muted
+                                font.pixelSize: 11
+                            }
+                        }
                     }
 
                     // Loading overlay

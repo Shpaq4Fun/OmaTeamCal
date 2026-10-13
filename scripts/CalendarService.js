@@ -7,20 +7,18 @@
 
 const CALENDAR_API_BASE = "https://www.googleapis.com/calendar/v3";
 
-// Compute Monday 00:00 and next Monday 00:00 for a given date (local timezone)
+// Compute the [weekStart, weekStart+7) range for the given week start date.
+// The input already honors the configured weekStartDay (it comes from
+// DataController.getCurrentWeekStart), so it is used as-is.
 function getWeekRange(date) {
-    var d = new Date(date);
-    d.setHours(0, 0, 0, 0);
-    var day = d.getDay(); // 0=Sun, 1=Mon...
-    var diffToMon = (day === 0 ? -6 : 1) - day; // days to add to get to Monday
-    var monday = new Date(d);
-    monday.setDate(d.getDate() + diffToMon);
-    var nextMonday = new Date(monday);
-    nextMonday.setDate(monday.getDate() + 7);
+    var start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    var next = new Date(start);
+    next.setDate(start.getDate() + 7);
     return {
-        timeMin: monday.toISOString(),
-        timeMax: nextMonday.toISOString(),
-        weekStart: monday
+        timeMin: start.toISOString(),
+        timeMax: next.toISOString(),
+        weekStart: start
     };
 }
 
@@ -42,7 +40,9 @@ function buildFreeBusyUrl(apiKey) {
 
 function fetchEventsForCalendar(calendarId, timeMin, timeMax, apiKey, callback) {
     var url = buildEventsListUrl(calendarId, timeMin, timeMax, apiKey);
-    Network.fetchJson(url, function(success, data, xhr) {
+    // Cached (30 s TTL): rapid member toggles re-render instantly from cache
+    // instead of re-hitting the Google API for every click.
+    Network.fetchJsonCached(url, function(success, data, xhr) {
         if (!success) {
             callback(false, "Calendar " + calendarId + ": " + data, null);
             return;
