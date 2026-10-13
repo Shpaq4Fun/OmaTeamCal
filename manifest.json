@@ -3,7 +3,8 @@
   "id": "shpaq.omateamcal",
   "name": "OmaTeamCal",
   "version": "0.1.0",
-  "author": "shpaq",
+  "author": "Jacek Wodecki",
+  "license": "MIT",
   "description": "Multi-member team calendar with theme-adaptive tint & pattern styling",
   "kinds": [
     "bar-widget"
