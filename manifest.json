@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "shpaq.omateamcal",
   "name": "OmaTeamCal",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "author": "Jacek Wodecki",
   "license": "MIT",
   "description": "Multi-member team calendar with theme-adaptive tint & pattern styling",
@@ -15,7 +15,7 @@
   "barWidget": {
     "displayName": "OmaTeamCal",
     "description": "View team calendar availability directly from your Omarchy bar",
-    "category": "Time",
+    "category": "Productivity",
     "defaultSection": "right",
     "allowMultiple": false
   }
