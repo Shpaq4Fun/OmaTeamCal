@@ -27,7 +27,7 @@ Item {
 
   // Days of the week header, derived from weekStart + weekStartDay
   readonly property var days: {
-    var names = ["PON.", "WT.", "ŚR.", "CZW.", "PT.", "SOB.", "NIEDZ."]
+    var names = ["MON.", "TUE.", "WED.", "THU.", "FRI.", "SAT.", "SUN."]
     var out = []
     for (var i = 0; i < 7; i++) {
       var d = new Date(root.weekStart)
