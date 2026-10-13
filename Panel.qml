@@ -220,7 +220,7 @@ Panel {
         anchors.bottom: parent.bottom
         width: root.barVertical ? parent.width : implicitWidth
         bar: root.bar
-        text: "📅"
+        text: "\udb83\uded8"
         tooltipText: "Team calendar"
         onPressed: function(buttonCode) { root.toggle() }
     }
@@ -232,8 +232,8 @@ Panel {
         owner: root
         bar: root.bar
         open: root.opened
-        contentWidth: panel.fittedContentWidth(Style.space(960))
-        contentHeight: panel.fittedContentHeight(Style.space(640))
+        contentWidth: panel.fittedContentWidth(Style.space(1440))
+        contentHeight: panel.fittedContentHeight(Style.space(840))
 
         ColumnLayout {
             anchors.fill: parent

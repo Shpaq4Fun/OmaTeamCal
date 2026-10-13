@@ -1,17 +1,20 @@
 # OmaTeamCal — Team Calendar for Omarchy
 
+![OmaTeamCal popup](screenshot.png)
+
 A bar widget plugin for [Omarchy](https://omarchy.org) that shows your team's
-Google Calendars in a weekly grid, right in your shell bar. Click the 📅 button,
-see who's busy, toggle members in and out, and navigate weeks — without ever
-leaving your keyboard-driven desktop.
+Google Calendars in a weekly grid, right in your shell bar. Click the calendar
+button, see who's busy, toggle members in and out, and navigate weeks — without
+ever leaving your keyboard-driven desktop.
 
 Built with Quickshell/QML, fully theme-adaptive: colors come live from your
 active Omarchy theme, so it always matches the rest of your bar.
 
 ## Features
 
-- **Bar widget + popup panel** — 📅 button in the bar, wide weekly grid in a
-  popup anchored to the button (dismiss with outside click)
+- **Bar widget + popup panel** — monochrome calendar glyph in the bar (Nerd
+  Font, ships with Omarchy), wide weekly grid in a popup anchored to the
+  button (dismiss with outside click)
 - **Multi-member view** — every team member's events in one weekly grid
   (default Mon–Sun, 07:00–18:00)
 - **Per-member styling** — each member gets a unique color tint **and** pattern
@@ -41,6 +44,7 @@ active Omarchy theme, so it always matches the rest of your bar.
 ## Requirements
 
 - **Omarchy** with shell plugin support (`omarchy plugin …` commands)
+- **Nerd Font** for the bar glyph (included with Omarchy)
 - **Google Calendar API key** (free; see [Setup](#1-get-a-google-calendar-api-key))
 - **Publicly readable calendars** — API-key auth only works for calendars
   shared publicly (see [Sharing calendars](#2-share-the-calendars-publicly))
@@ -53,8 +57,7 @@ omarchy plugin add https://github.com/Shpaq4Fun/OmaTeamCal.git --enable
 
 The installer asks where to place the widget in the bar (the manifest suggests
 **right**). The plugin is cloned into
-`~/.config/omarchy/plugins/shpaq.omateamcal/` and picks up changes
-automatically — no restart needed.
+`~/.config/omarchy/plugins/shpaq.omateamcal/`.
 
 Then create your config (it is deliberately **not** shipped with the repo):
 
@@ -64,7 +67,11 @@ cp team.example.json team.json
 $EDITOR team.json
 ```
 
-The panel opens as soon as `team.json` is valid — save the file and click 📅.
+The panel opens as soon as `team.json` is valid — save the file and click the
+calendar button in the bar. Later edits to `team.json` are picked up live.
+
+After a code update (`omarchy plugin update shpaq.omateamcal`), run
+`omarchy-restart-shell` — see [Troubleshooting](#troubleshooting).
 
 Uninstall with `omarchy plugin remove shpaq.omateamcal`.
 
@@ -144,7 +151,7 @@ Copy [`team.example.json`](./team.example.json) as your starting point.
 
 | Action | How |
 |---|---|
-| Open/close panel | Click 📅 in the bar |
+| Open/close panel | Click the calendar icon in the bar |
 | Show/hide a member | Click the member in the sidebar |
 | Previous/next week | ◀ / ▶ in the panel header |
 | Refresh now | ⟳ Refresh button |
@@ -165,6 +172,8 @@ after that they repeat.
 | Panel opens but the grid is empty | `team.json` missing/invalid, no users selected, or no events that week — check the terminal running the shell for QML errors |
 | Wrong dates in the header | The header derives from today's date; check the system clock |
 | Widget missing from the bar | `omarchy plugin list` to confirm it's discovered, then `omarchy plugin enable shpaq.omateamcal` |
+| Bar still shows an old version after editing/updating the plugin | `omarchy-restart-shell` — the shell's plugin watcher reloads panels but doesn't rebuild the live bar widget; only a full shell restart does |
+| Popup didn't resize after changing `contentWidth` | Same fix: `omarchy-restart-shell` |
 
 ## Development
 
@@ -177,8 +186,17 @@ cd OmaTeamCal
   `quickshell -p ./Preview.qml`
 - **`_Bisect.qml`** — headless regression driver (toggle invariants). It prints
   `DRIVER RESULT: PASS/FAIL`; run `quickshell -p ./_Bisect.qml`
-- **Installed plugin** — saved changes under
-  `~/.config/omarchy/plugins/shpaq.omateamcal/` hot-reload the live shell
+- **Deploy to the live bar** — the shell's plugin watcher reloads panels on
+  file changes but keeps the running bar-widget component, so QML edits only
+  take effect after a shell restart:
+
+  ```sh
+  cp Panel.qml ~/.config/omarchy/plugins/shpaq.omateamcal/
+  omarchy-restart-shell
+  ```
+
+  (`team.json` edits are the exception — they're watched by the panel itself
+  and reload live.)
 - **Validate the manifest** before publishing:
   `omarchy plugin validate .`
 
