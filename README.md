@@ -96,7 +96,7 @@ Only expose events you're comfortable making readable by anyone with the key.
   "users": [
     {
       "id": "user-0",              // stable, unique id (any string)
-      "name": "DMC Calendar",      // display name in the sidebar
+      "name": "First team member",      // display name in the sidebar
       "calendarId": [              // one or more Google Calendar IDs
         "abc123@group.calendar.google.com"
       ],
