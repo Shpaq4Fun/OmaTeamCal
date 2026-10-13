@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "shpaq.omateamcal",
-  "name": "Team Calendar",
+  "name": "OmaTeamCal",
   "version": "0.1.0",
   "author": "shpaq",
-  "description": "Multi-member team calendar availability planner with theme-adaptive tint & pattern styling",
+  "description": "Multi-member team calendar with theme-adaptive tint & pattern styling",
   "kinds": [
     "bar-widget"
   ],
@@ -12,7 +12,7 @@
     "barWidget": "Panel.qml"
   },
   "barWidget": {
-    "displayName": "Team Calendar",
+    "displayName": "OmaTeamCal",
     "description": "View team calendar availability directly from your Omarchy bar",
     "category": "Time",
     "defaultSection": "right",
