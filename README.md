@@ -1,6 +1,6 @@
 # OmaTeamCal — Team Calendar for Omarchy
 
-![OmaTeamCal popup](screenshot.png)
+![OmaTeamCal popup](preview.png)
 
 A bar widget plugin for [Omarchy](https://omarchy.org) that shows your team's
 Google Calendars in a weekly grid, right in your shell bar. Click the calendar
