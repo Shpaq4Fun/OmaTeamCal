@@ -13,6 +13,7 @@ Item {
   property int weekStartDay: 0
   property int startHour: 7
   property int endHour: 18
+  property int numDays: 5
   property color themeForeground: "#bebebe"
   property color themeMuted: "#555555"
   property color themeAccent: "#e68e0d"
@@ -29,10 +30,10 @@ Item {
   readonly property var days: {
     var names = ["MON.", "TUE.", "WED.", "THU.", "FRI.", "SAT.", "SUN."]
     var out = []
-    for (var i = 0; i < 7; i++) {
+    for (var i = 0; i < numDays; i++) {
       var d = new Date(root.weekStart)
       d.setDate(d.getDate() + i)
-      out.push(names[(root.weekStartDay + i) % 7] + " " + d.getDate())
+      out.push(names[(root.weekStartDay + i) % numDays] + " " + d.getDate())
     }
     return out
   }
@@ -42,6 +43,56 @@ Item {
   readonly property real pxPerHour: gridFlickable.height > 0
     ? gridFlickable.height / totalHours
     : 50
+
+  // Timed events feed the hour grid; all-day events render in the band below
+  readonly property var timedEvents: {
+    var out = []
+    for (var i = 0; i < events.length; i++) {
+      if (!events[i].isAllDay) out.push(events[i])
+    }
+    return out
+  }
+
+  readonly property int allDayLaneH: 28
+
+  // Lane-pack visible all-day events across day columns (Google-Calendar
+  // style): spans are clipped to the visible days, then each event is
+  // dropped into the first lane where its day range doesn't collide.
+  readonly property var allDayRender: {
+    var visible = []
+    var i, ev
+    for (i = 0; i < events.length; i++) {
+      ev = events[i]
+      if (!ev.isAllDay) continue
+      if (!activeStyleMap[ev.userId]) continue // deselected member
+      var s = ev.spanStartDay !== undefined ? ev.spanStartDay : ev.dayIndex
+      var e = ev.spanEndDay !== undefined ? ev.spanEndDay : ev.dayIndex
+      s = Math.max(0, s)
+      e = Math.min(numDays - 1, e)
+      if (s >= numDays || s > e) continue // fully outside the visible days
+      visible.push({ ev: ev, s: s, e: e })
+    }
+    visible.sort(function(a, b) { return a.s !== b.s ? a.s - b.s : (b.e - a.e) })
+    var lanes = []
+    var list = []
+    for (i = 0; i < visible.length; i++) {
+      var item = visible[i]
+      var lane = 0
+      while (lane < lanes.length) {
+        var clash = false
+        for (var m = 0; m < lanes[lane].length; m++) {
+          var p = lanes[lane][m]
+          if (!(item.e < p.s || item.s > p.e)) { clash = true; break }
+        }
+        if (!clash) break
+        lane++
+      }
+      if (lane >= lanes.length) lanes.push([])
+      lanes[lane].push(item)
+      list.push({ event: item.ev, lane: lane, spanStart: item.s, spanEnd: item.e })
+    }
+    return { list: list, laneCount: lanes.length }
+  }
 
   ColumnLayout {
     anchors.fill: parent
@@ -77,6 +128,118 @@ Item {
             color: root.themeForeground
             font.pixelSize: 11
             font.bold: true
+          }
+        }
+      }
+    }
+
+    // All-day band — lane-packed strip under the day headers. Occupies no
+    // space when the visible week has no all-day events.
+    Item {
+      id: allDayBand
+      Layout.fillWidth: true
+      Layout.preferredHeight: root.allDayRender.laneCount * root.allDayLaneH
+      Layout.minimumHeight: Layout.preferredHeight
+      Layout.maximumHeight: Layout.preferredHeight
+      clip: true
+
+      readonly property real colW: (width - 50) / root.numDays
+
+      // Day dividers continuing the grid's column lines (both edges included)
+      Repeater {
+        model: root.numDays + 1
+        Rectangle {
+          x: 50 + index * allDayBand.colW
+          width: 1
+          height: parent.height
+          color: Qt.rgba(root.themeForeground.r, root.themeForeground.g, root.themeForeground.b, 0.05)
+        }
+      }
+
+      // All-day blocks — one lane each, spanning every covered day column
+      Repeater {
+        model: root.allDayRender.list
+        delegate: Item {
+          id: adDelegate
+
+          property var eventItem: modelData.event
+          property var userStyle: root.activeStyleMap[eventItem.userId] || null
+
+          visible: userStyle !== null
+          x: 50 + modelData.spanStart * allDayBand.colW + 2
+          y: modelData.lane * root.allDayLaneH + 2
+          width: (modelData.spanEnd - modelData.spanStart + 1) * allDayBand.colW - 4
+          height: root.allDayLaneH - 4
+
+          Rectangle {
+            anchors.fill: parent
+            radius: 4
+            border.color: adDelegate.userStyle ? adDelegate.userStyle.borderColor : root.themeAccent
+            border.width: 1
+            clip: true
+
+            // Pattern & Tint fill
+            PatternRect {
+              anchors.fill: parent
+              radius: 4
+              backgroundColor: adDelegate.userStyle ? adDelegate.userStyle.backgroundColor : "#333"
+              stripeColor: adDelegate.userStyle ? adDelegate.userStyle.stripeColor : "#555"
+              pattern: adDelegate.userStyle ? adDelegate.userStyle.pattern : "solid"
+              stripeSpacing: 8
+              stripeWidth: 2
+            }
+
+            RowLayout {
+              anchors.fill: parent
+              anchors.leftMargin: 5
+              anchors.rightMargin: 5
+              spacing: 6
+
+              Text {
+                Layout.fillWidth: true
+                text: adDelegate.eventItem.title || ""
+                font.pixelSize: 11
+                font.bold: true
+                color: adDelegate.userStyle ? adDelegate.userStyle.textColor : root.themeForeground
+                elide: Text.ElideRight
+              }
+
+              Text {
+                Layout.maximumWidth: parent.width * 0.4
+                text: adDelegate.eventItem.userName || ""
+                font.pixelSize: 9
+                color: adDelegate.userStyle ? adDelegate.userStyle.textColor : root.themeMuted
+                opacity: 0.85
+                elide: Text.ElideRight
+              }
+            }
+          }
+
+          // Hover → same tooltip as the timed events
+          MouseArea {
+            id: adTipArea
+            anchors.fill: parent
+            hoverEnabled: true
+            acceptedButtons: Qt.NoButton
+            onEntered: {
+              root.hoveredId = String(adDelegate.eventItem.id)
+              root.hoveredEvent = adDelegate.eventItem
+            }
+            onExited: {
+              if (root.hoveredId === String(adDelegate.eventItem.id)) {
+                root.hoveredId = ""
+                root.hoveredEvent = null
+              }
+            }
+            onMouseXChanged: root.moveTip(adTipArea)
+            onMouseYChanged: root.moveTip(adTipArea)
+          }
+
+          Component.onDestruction: {
+            if (root.hoveredId === String(adDelegate.eventItem.id)) {
+              root.hoveredId = ""
+              root.hoveredEvent = null
+            }
           }
         }
       }
@@ -132,7 +295,7 @@ Item {
           spacing: 0
 
           Repeater {
-            model: 7
+            model: numDays
             Rectangle {
               Layout.fillWidth: true
               Layout.fillHeight: true
@@ -145,13 +308,13 @@ Item {
 
         // Render Events
         Repeater {
-          model: root.events
+          model: root.timedEvents
           delegate: Item {
             id: eventDelegate
 
             property var eventItem: modelData
             property var userStyle: root.activeStyleMap[eventItem.userId] || null
-            property real colWidth: (parent.width - 50) / 7
+            property real colWidth: (parent.width - 50) / numDays
             property var layout: eventItem.layout || { leftPercent: 0, widthPercent: 100, col: 0, totalCols: 1 }
 
             // Hide event if member not currently active / assigned style
@@ -190,7 +353,7 @@ Item {
                 Text {
                   width: parent.width
                   text: eventDelegate.eventItem.title || ""
-                  font.pixelSize: 10
+                  font.pixelSize: 11
                   font.bold: true
                   color: eventDelegate.userStyle ? eventDelegate.userStyle.textColor : root.themeForeground
                   elide: Text.ElideRight

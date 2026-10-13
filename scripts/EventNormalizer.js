@@ -52,6 +52,14 @@ function normalizeEvent(rawEvent, weekStart) {
     var dayIndex = Math.floor((displayStart.getTime() - weekStart.getTime()) / (24 * 60 * 60 * 1000));
     dayIndex = Math.max(0, Math.min(6, dayIndex));
 
+    // Inclusive day span within the week — all-day events may cover several
+    // consecutive days (Google's end.date is exclusive, already handled above)
+    var dayMs = 24 * 60 * 60 * 1000;
+    var spanStartDay = Math.floor((displayStart.getTime() - weekStart.getTime()) / dayMs);
+    var spanEndDay = Math.floor((displayEnd.getTime() - weekStart.getTime()) / dayMs);
+    spanStartDay = Math.max(0, Math.min(6, spanStartDay));
+    spanEndDay = Math.max(spanStartDay, Math.min(6, spanEndDay));
+
     // Start hour/minute in local time
     var startHour = displayStart.getHours();
     var startMinute = displayStart.getMinutes();
@@ -60,16 +68,26 @@ function normalizeEvent(rawEvent, weekStart) {
     var durationMs = displayEnd.getTime() - displayStart.getTime();
     var durationMinutes = Math.round(durationMs / 60000);
 
-    // Time label "HH:MM - HH:MM"
-    var endHour = displayEnd.getHours();
-    var endMinute = displayEnd.getMinutes();
-    var timeLabel = pad2(startHour) + ":" + pad2(startMinute) + " - " + pad2(endHour) + ":" + pad2(endMinute);
+    // Label: "HH:MM - HH:MM" for timed events, "All day" or a day range for
+    // all-day events
+    var timeLabel;
+    if (isAllDay) {
+        timeLabel = spanEndDay > spanStartDay
+            ? dayLabel(weekStart, spanStartDay) + " - " + dayLabel(weekStart, spanEndDay)
+            : "All day";
+    } else {
+        var endHour = displayEnd.getHours();
+        var endMinute = displayEnd.getMinutes();
+        timeLabel = pad2(startHour) + ":" + pad2(startMinute) + " - " + pad2(endHour) + ":" + pad2(endMinute);
+    }
 
     return {
         id: ev.id,
         userId: userId,
         title: ev.summary,
         dayIndex: dayIndex,
+        spanStartDay: spanStartDay,
+        spanEndDay: spanEndDay,
         startHour: startHour,
         startMinute: startMinute,
         durationMinutes: durationMinutes,
@@ -79,6 +97,15 @@ function normalizeEvent(rawEvent, weekStart) {
         location: ev.location || "",
         isAllDay: isAllDay
     };
+}
+
+var EN_SHORT_DAYS = ["SUN.", "MON.", "TUE.", "WED.", "THU.", "FRI.", "SAT."];
+
+// "TUE. 13" — label for dayIndex days after weekStart
+function dayLabel(weekStart, dayIndex) {
+    var d = new Date(weekStart);
+    d.setDate(d.getDate() + dayIndex);
+    return EN_SHORT_DAYS[d.getDay()] + " " + d.getDate();
 }
 
 function pad2(n) {
@@ -127,6 +154,8 @@ function normalizeFreeBusy(freeBusyData, calIdToUser, weekStart) {
                 userId: user.id,
                 title: "BUSY",
                 dayIndex: dayIndex,
+                spanStartDay: dayIndex,
+                spanEndDay: dayIndex,
                 startHour: startHour,
                 startMinute: startMinute,
                 durationMinutes: durationMinutes,

@@ -239,43 +239,6 @@ Panel {
             anchors.fill: parent
             spacing: 10
 
-            // Header with week nav
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-
-                ToolButton {
-                    text: "◀"
-                    font.pixelSize: 14
-                    onClicked: { root.weekOffset -= 1; DataController.setWeekOffset(root.weekOffset); }
-                    enabled: !root.loading
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    text: root.weekLabel(root.weekOffset)
-                    color: root.foreground
-                    font.pixelSize: 14
-                    font.bold: true
-                    horizontalAlignment: Text.AlignHCenter
-                }
-
-                ToolButton {
-                    text: "▶"
-                    font.pixelSize: 14
-                    onClicked: { root.weekOffset += 1; DataController.setWeekOffset(root.weekOffset); }
-                    enabled: !root.loading
-                }
-            }
-
-            ToolButton {
-                Layout.fillWidth: true
-                text: root.loading ? "⟳ Loading..." : "⟳ Refresh"
-                font.pixelSize: 11
-                onClicked: DataController.refresh()
-                enabled: !root.loading
-            }
-
             // Error banner — only when there is no data to fall back on
             Rectangle {
                 Layout.fillWidth: true
@@ -340,6 +303,47 @@ Panel {
                         anchors.fill: parent
                         anchors.margins: 10
                         spacing: 6
+
+                        // Week navigation + refresh (above the member list, so
+                        // the calendar gets the full vertical height)
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            ToolButton {
+                                text: "◀"
+                                font.pixelSize: 14
+                                onClicked: { root.weekOffset -= 1; DataController.setWeekOffset(root.weekOffset); }
+                                enabled: !root.loading
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: root.weekLabel(root.weekOffset)
+                                color: root.foreground
+                                font.pixelSize: 13
+                                font.bold: true
+                                horizontalAlignment: Text.AlignHCenter
+                                elide: Text.ElideRight
+                            }
+
+                            ToolButton {
+                                text: "▶"
+                                font.pixelSize: 14
+                                onClicked: { root.weekOffset += 1; DataController.setWeekOffset(root.weekOffset); }
+                                enabled: !root.loading
+                            }
+                        }
+
+                        ToolButton {
+                            Layout.fillWidth: true
+                            text: root.loading ? "⟳ Loading..." : "⟳ Refresh"
+                            font.pixelSize: 11
+                            onClicked: DataController.refresh()
+                            enabled: !root.loading
+                        }
+
+                        Rectangle { Layout.fillWidth: true; height: 1; color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.1); }
 
                         Text { text: "Team Members"; color: root.foreground; font.pixelSize: 13; font.bold: true; Layout.fillWidth: true; }
                         Text { text: "Select members to view"; color: root.muted; font.pixelSize: 10; Layout.fillWidth: true; }

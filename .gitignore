@@ -9,3 +9,8 @@ _Bisect.qml
 .DS_Store
 nohup.out
 *.qslog
+build_instruction.md
+example.png
+plan.md
+idea.md
+OmaTeamCal.code-workspace

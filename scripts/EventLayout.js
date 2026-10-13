@@ -120,33 +120,10 @@ function processDayEvents(events) {
     return output;
 }
 
-// Also process all-day events (spanning full day width, stacked vertically)
-function processAllDayEventsForLayout(events) {
-    if (!events || events.length === 0) return [];
-
-    var eventsByDay = {};
-    for (var i = 0; i < events.length; i++) {
-        var ev = events[i];
-        var day = ev.dayIndex;
-        if (!eventsByDay[day]) eventsByDay[day] = [];
-        eventsByDay[day].push(ev);
-    }
-
-    var result = [];
-    for (var day = 0; day <= 6; day++) {
-        var dayEvents = eventsByDay[day] || [];
-        for (var j = 0; j < dayEvents.length; j++) {
-            var ev = dayEvents[j];
-            var newEvent = {};
-            for (var key in ev) { if (ev.hasOwnProperty(key)) newEvent[key] = ev[key]; }
-            newEvent.layout = { col: 0, totalCols: 1, leftPercent: 0, widthPercent: 100, isAllDay: true, row: j };
-            result.push(newEvent);
-        }
-    }
-    return result;
-}
-
-// Main entry: process all events, separating timed vs all-day
+// Main entry: timed events get column/width layout for the hour grid;
+// all-day events are returned unchanged — the grid packs them into the
+// all-day band itself (CalendarGrid.allDayRender), where the visible-day
+// count lives.
 function processEventsForLayout(events) {
     var timed = [];
     var allDay = [];
@@ -154,7 +131,5 @@ function processEventsForLayout(events) {
         if (events[i].isAllDay) allDay.push(events[i]);
         else timed.push(events[i]);
     }
-    var timedResult = processTimedEventsForLayout(timed);
-    var allDayResult = processAllDayEventsForLayout(allDay);
-    return timedResult.concat(allDayResult);
+    return processTimedEventsForLayout(timed).concat(allDay);
 }
