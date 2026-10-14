@@ -33,6 +33,21 @@ Panel {
     property var selectedUserIds: []
     property var activeStyleMap: ({})
 
+    // Auto sidebar width: fits the longest member name (measured with the
+    // same font the delegate uses), clamped so the week-nav row still fits
+    // and very long names truncate via elide instead of blowing up the panel.
+    property TextMetrics _nameMetrics: TextMetrics { font.pixelSize: 11; font.bold: true }
+    property real autoSidebarWidth: 200
+    onTeamDataChanged: {
+        var maxW = 0;
+        for (var i = 0; i < root.teamData.length; i++) {
+            root._nameMetrics.text = root.teamData[i].name || "";
+            maxW = Math.max(maxW, root._nameMetrics.advanceWidth);
+        }
+        // 10 outer margin x2 + 6 row margin x2 + 16 checkbox + 6 spacing + 8 padding
+        root.autoSidebarWidth = Math.min(340, Math.max(190, Math.ceil(maxW + 62)));
+    }
+
     // Events from DataController
     property var events: []
 
@@ -308,7 +323,7 @@ Panel {
 
                 // Sidebar
                 Rectangle {
-                    Layout.preferredWidth: 240
+                    Layout.preferredWidth: root.autoSidebarWidth
                     Layout.fillHeight: true
                     color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.03)
                     radius: 6
