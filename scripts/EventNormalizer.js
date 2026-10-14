@@ -93,7 +93,7 @@ function normalizeEvent(rawEvent, weekStart) {
         durationMinutes: durationMinutes,
         timeLabel: timeLabel,
         userName: userName,
-        description: ev.description || "",
+        description: cleanDescription(ev.description),
         location: ev.location || "",
         isAllDay: isAllDay
     };
@@ -110,6 +110,15 @@ function dayLabel(weekStart, dayIndex) {
 
 function pad2(n) {
     return n < 10 ? "0" + n : String(n);
+}
+
+// Tooltip shows room/building only: strip URLs (e.g. USOS links) from
+// Google Calendar descriptions, collapse leftover blank lines.
+function cleanDescription(s) {
+    if (!s) return "";
+    var out = String(s).replace(/https?:\/\/\S+/g, "");
+    out = out.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").replace(/^\s+|\s+$/g, "");
+    return out;
 }
 
 // Normalize freebusy busy blocks
@@ -222,7 +231,7 @@ function normalizeAll(rawResult, activeUsers) {
     }
 
     // Sort by dayIndex, then startHour, then startMinute
-    deduped.sort(function(a, b) {
+    deduped.sort(function (a, b) {
         if (a.dayIndex !== b.dayIndex) return a.dayIndex - b.dayIndex;
         var aMin = a.startHour * 60 + a.startMinute;
         var bMin = b.startHour * 60 + b.startMinute;

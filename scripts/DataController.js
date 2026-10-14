@@ -100,7 +100,10 @@ function retryNow() {
 function setConfig(config) {
     if (config.apiKey !== undefined) _config.apiKey = config.apiKey;
     if (config.refreshIntervalMinutes !== undefined) {
-        _config.refreshIntervalMs = config.refreshIntervalMinutes * 60 * 1000;
+        var mins = Number(config.refreshIntervalMinutes);
+        if (isNaN(mins)) mins = DEFAULT_REFRESH_INTERVAL_MS / 60000;
+        mins = Math.max(1, Math.min(60, mins)); // clamp 1–60 min: no hot-loop polling
+        _config.refreshIntervalMs = mins * 60 * 1000;
     }
     if (config.weekStartDay !== undefined) {
         var wd = Math.round(Number(config.weekStartDay));

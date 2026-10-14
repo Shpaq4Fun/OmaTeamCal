@@ -7,6 +7,13 @@
 
 const CALENDAR_API_BASE = "https://www.googleapis.com/calendar/v3";
 
+// Allowlist: plugin must only talk to Google Calendar API. Calendar IDs and
+// keys are encodeURIComponent'd into the path/query, so they can never switch
+// host — this guard makes that explicit for review.
+function isAllowedUrl(url) {
+    return String(url).indexOf(CALENDAR_API_BASE + "/") === 0;
+}
+
 // Compute the [weekStart, weekStart+7) range for the given week start date.
 // The input already honors the configured weekStartDay (it comes from
 // DataController.getCurrentWeekStart), so it is used as-is.
@@ -40,6 +47,10 @@ function buildFreeBusyUrl(apiKey) {
 
 function fetchEventsForCalendar(calendarId, timeMin, timeMax, apiKey, callback) {
     var url = buildEventsListUrl(calendarId, timeMin, timeMax, apiKey);
+    if (!isAllowedUrl(url)) {
+        callback(false, "Blocked non-allowlisted URL", null);
+        return;
+    }
     // Cached (30 s TTL): rapid member toggles re-render instantly from cache
     // instead of re-hitting the Google API for every click.
     Network.fetchJsonCached(url, function(success, data, xhr) {
@@ -53,6 +64,10 @@ function fetchEventsForCalendar(calendarId, timeMin, timeMax, apiKey, callback) 
 
 function fetchFreeBusy(calendarIds, timeMin, timeMax, apiKey, callback) {
     var url = buildFreeBusyUrl(apiKey);
+    if (!isAllowedUrl(url)) {
+        callback(false, "Blocked non-allowlisted URL", null);
+        return;
+    }
     var items = calendarIds.map(function(id) { return { id: id }; });
     var body = {
         timeMin: timeMin,

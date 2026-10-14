@@ -104,6 +104,7 @@ Item {
             // Member name
             Text {
               Layout.fillWidth: true
+              textFormat: Text.PlainText
               text: rowDelegate.user.name
               color: rowDelegate.isActive ? root.themeForeground : root.themeMuted
               font.pixelSize: 12

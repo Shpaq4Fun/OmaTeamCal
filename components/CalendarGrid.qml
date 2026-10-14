@@ -197,6 +197,7 @@ Item {
 
               Text {
                 Layout.fillWidth: true
+                textFormat: Text.PlainText
                 text: adDelegate.eventItem.title || ""
                 font.pixelSize: 11
                 font.bold: true
@@ -206,6 +207,7 @@ Item {
 
               Text {
                 Layout.maximumWidth: parent.width * 0.4
+                textFormat: Text.PlainText
                 text: adDelegate.eventItem.userName || ""
                 font.pixelSize: 9
                 color: adDelegate.userStyle ? adDelegate.userStyle.textColor : root.themeMuted
@@ -352,6 +354,7 @@ Item {
 
                 Text {
                   width: parent.width
+                  textFormat: Text.PlainText
                   text: eventDelegate.eventItem.title || ""
                   font.pixelSize: 11
                   font.bold: true
@@ -361,6 +364,7 @@ Item {
 
                 Text {
                   width: parent.width
+                  textFormat: Text.PlainText
                   text: eventDelegate.eventItem.timeLabel || ""
                   font.pixelSize: 9
                   color: eventDelegate.userStyle ? eventDelegate.userStyle.textColor : root.themeMuted
@@ -370,6 +374,7 @@ Item {
 
                 Text {
                   width: parent.width
+                  textFormat: Text.PlainText
                   text: eventDelegate.eventItem.userName || ""
                   font.pixelSize: 9
                   color: eventDelegate.userStyle ? eventDelegate.userStyle.textColor : root.themeMuted
@@ -437,6 +442,7 @@ Item {
 
       Text {
         width: parent.width
+        textFormat: Text.PlainText
         text: root.hoveredEvent ? (root.hoveredEvent.title || "") : ""
         font.pixelSize: 11
         font.bold: true
@@ -445,12 +451,14 @@ Item {
       }
       Text {
         width: parent.width
+        textFormat: Text.PlainText
         text: root.hoveredEvent ? (root.hoveredEvent.timeLabel || "") : ""
         font.pixelSize: 10
         color: root.themeAccent
       }
       Text {
         width: parent.width
+        textFormat: Text.PlainText
         text: root.hoveredEvent ? (root.hoveredEvent.userName || "") : ""
         font.pixelSize: 10
         color: root.themeForeground
@@ -459,6 +467,7 @@ Item {
       Text {
         width: parent.width
         visible: root.hoveredEvent && root.hoveredEvent.location !== ""
+        textFormat: Text.PlainText
         text: root.hoveredEvent ? ("📍 " + root.hoveredEvent.location) : ""
         font.pixelSize: 10
         color: root.themeForeground
@@ -467,6 +476,7 @@ Item {
       Text {
         width: parent.width
         visible: root.hoveredEvent && root.hoveredEvent.description !== ""
+        textFormat: Text.PlainText
         text: root.hoveredEvent ? (root.hoveredEvent.description || "") : ""
         font.pixelSize: 10
         color: root.themeForeground

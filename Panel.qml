@@ -163,8 +163,12 @@ Panel {
                 var cfg = {};
                 if (parsed.apiKey) cfg.apiKey = parsed.apiKey;
                 if (parsed.refreshIntervalMinutes) {
-                    cfg.refreshIntervalMinutes = parsed.refreshIntervalMinutes;
-                    refreshTimer.interval = parsed.refreshIntervalMinutes * 60 * 1000;
+                    var mins = Number(parsed.refreshIntervalMinutes);
+                    if (!isNaN(mins)) {
+                        mins = Math.max(1, Math.min(60, mins)); // clamp 1–60 min
+                        cfg.refreshIntervalMinutes = mins;
+                        refreshTimer.interval = mins * 60 * 1000;
+                    }
                 }
                 if (parsed.weekStart !== undefined) cfg.weekStartDay = parsed.weekStart;
                 if (parsed.timeRange) cfg.timeRange = parsed.timeRange;
@@ -252,6 +256,7 @@ Panel {
                 Text {
                     anchors.fill: parent
                     anchors.margins: 8
+                    textFormat: Text.PlainText
                     text: root.errorMessage + (root.retryPending ? "\nRetrying…" : "")
                     color: "#e06c75"
                     font.pixelSize: 10
@@ -273,6 +278,7 @@ Panel {
                     id: offlineText
                     anchors.fill: parent
                     anchors.margins: 5
+                    textFormat: Text.PlainText
                     text: "⚠ Showing saved data"
                         + (DataController.getLastFetchTime() > 0
                             ? " · updated " + Qt.formatTime(new Date(DataController.getLastFetchTime()), "HH:mm")
@@ -319,6 +325,7 @@ Panel {
 
                             Text {
                                 Layout.fillWidth: true
+                                textFormat: Text.PlainText
                                 text: root.weekLabel(root.weekOffset)
                                 color: root.foreground
                                 font.pixelSize: 13
@@ -407,6 +414,7 @@ Panel {
 
                                         Text {
                                             Layout.fillWidth: true
+                                            textFormat: Text.PlainText
                                             text: rowDelegate.user.name
                                             color: rowDelegate.isActive ? root.foreground : root.muted
                                             font.pixelSize: 11
