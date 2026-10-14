@@ -116,6 +116,17 @@ Panel {
         return out;
     }
 
+    // Recompute cached block/checkbox colors. Called on selection change AND
+    // on theme change (onAccentChanged/onBackgroundChanged below) — without
+    // the latter the blocks keep the previous theme's colors until restart.
+    function refreshStyleMap() {
+        if (root.teamData.length === 0) return;
+        root.activeStyleMap = root.computeStyleMap(root.selectedUsers(), root.accent, root.background);
+    }
+
+    onAccentChanged: root.refreshStyleMap()
+    onBackgroundChanged: root.refreshStyleMap()
+
     // Toggle a member. Runs at root scope; the ListView model is untouched,
     // so the clicked delegate survives and the whole handler completes.
     function toggleUser(userId) {
@@ -129,9 +140,8 @@ Panel {
         if (!wasSelected) next.push(userId);
         root.selectedUserIds = next;
 
-        var selected = root.selectedUsers();
-        root.activeStyleMap = root.computeStyleMap(selected, root.accent, root.background);
-        DataController.setActiveUsers(selected);
+        root.refreshStyleMap();
+        DataController.setActiveUsers(root.selectedUsers());
     }
 
     // Bar slot sizes itself from these (Bar.qml:1814) — keep them bound to
@@ -157,7 +167,7 @@ Panel {
                     if (parsed.users[i].public !== false) sel.push(parsed.users[i].id);
                 }
                 root.selectedUserIds = sel;
-                root.activeStyleMap = root.computeStyleMap(root.selectedUsers(), root.accent, root.background);
+                root.refreshStyleMap();
                 // Pass config to DataController (single call), then read back
                 // the clamped values so UI and controller agree
                 var cfg = {};
