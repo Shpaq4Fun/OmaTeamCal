@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "shpaq.omateamcal",
   "name": "OmaTeamCal",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Jacek Wodecki",
   "license": "MIT",
   "description": "Multi-member team calendar with theme-adaptive tint & pattern styling",
